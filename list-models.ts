@@ -1,39 +1,43 @@
-// 役割: 現在のAPIキーで利用可能なGeminiモデルの一覧を取得・表示するスクリプト
-// AI向け役割: REST API経由でモデル一覧を取得し、標準出力にリストアップする。
+// 役割: 現在のGroq APIキーで利用可能なモデルの一覧を取得・表示するスクリプト
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.GROQ_API_KEY;
 if (!apiKey) {
-  console.error("エラー: 環境変数 GEMINI_API_KEY が設定されていません。");
+  console.error("エラー: 環境変数 GROQ_API_KEY が設定されていません。");
   process.exit(1);
 }
 
-async function fetchAvailableModels() {
+async function fetchAvailableGroqModels() {
   try {
-    console.log("APIキーに紐づく利用可能なモデルを照会中...");
+    console.log("Groq APIキーに紐づく利用可能なモデルを照会中...");
     
-    // Node.jsの標準fetchを使用してREST APIを直接叩く
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    // Groqのモデル一覧取得用エンドポイント
+    const response = await fetch("https://api.groq.com/openai/v1/models", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      }
+    });
     
     if (!response.ok) {
-      throw new Error(`APIリクエスト失敗: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`APIリクエスト失敗: ${response.status} ${response.statusText} ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     
-    // "gemini" を含むモデルの「短い名前」だけを抽出して表示
-    const geminiModels = data.models
-      .filter((m: any) => m.name.includes("gemini"))
-      .map((m: any) => m.name.replace("models/", ""));
+    // data.data 配列内にモデル情報が入っています
+    const models = data.data.map((m: any) => m.id);
 
-    console.log("\n【現在のAPIキーで利用可能なモデル一覧】");
-    geminiModels.forEach((name: string) => console.log(`- ${name}`));
+    console.log("\n【現在のGroq APIキーで利用可能なモデル一覧】");
+    models.sort().forEach((id: string) => console.log(`- ${id}`));
     
   } catch (error) {
     console.error("モデル一覧の取得中にエラーが発生しました:", error);
   }
 }
 
-fetchAvailableModels();
+fetchAvailableGroqModels();
